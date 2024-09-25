@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Harmonix</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Open Sans', sans-serif;
+            background-color: #1A1A1A;
+            color: white;
+        }
+        .container {
+            max-width: 900px;
+            padding-top: 5%;
+        }
+        .card {
+            background: linear-gradient(145deg, #232323, #1A1A1A);
+            border: none;
+            border-radius: 25px;
+            box-shadow: 0 0 20px #D63384;
+        }
+        .card-header {
+            background-color: transparent;
+            border-bottom: none;
+        }
+        .card-body {
+            padding: 2rem;
+        }
+        .btn-primary {
+            background-color: #D63384;
+            border: none;
+            border-radius: 50px;
+        }
+        .btn-primary:hover {
+            background-color: #C82373;
+        }
+        .form-control {
+            background-color: transparent;
+            border-color: whitesmoke;
+            color: white;
+        }
+        .form-control::placeholder {
+            color: #ADB5BD;
+        }
+        .form-control:focus {
+            box-shadow: none;
+            color: white;
+            background-color: #1A1A1A;
+        }
+        .form-label{
+            color: #FFFFFF;
+        }
+        .card-title {
+            color: white;
+            font-weight: bold;
+        }
+        .audio-player {
+            display: none;
+            margin-top: 20px;
+            text-align: center;
+        }
+        .audio-player audio {
+            width: 100%;
+            outline: none;
+        }
+        .slider {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 15px;
+            border-radius: 5px;
+            background: #D63384;
+            outline: none;
+            opacity: 0.7;
+            -webkit-transition: .2s;
+            transition: opacity .2s;
+        }
+        .slider:hover {
+            opacity: 1;
+        }
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 25px;
+            height: 25px;
+            border-radius: 50%;
+            background: #FFFFFF;
+            cursor: pointer;
+            box-shadow: 0 0 10px #D63384;
+        }
+        .slider::-moz-range-thumb {
+            width: 25px;
+            height: 25px;
+            border-radius: 50%;
+            background: #FFFFFF;
+            cursor: pointer;
+            box-shadow: 0 0 10px #D63384;
+        }
+        .download-icon {
+            color: #D63384;
+            font-size: 24px;
+            margin-left: 10px;
+            cursor: pointer;
+        }
+        #loader {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="text-center mb-4"><b>Welcome to Harmonix</b></h1>
+        <p class="text-center mb-5">Create songs from text within seconds by describing the music you wish to generate.</p>
+        <div class="card mx-auto mb-5">
+            <div class="card-header"></div>
+            <div class="card-body">
+                <h4 class="card-title mb-4">Put your Text Prompt</h4>
+                <div class="mb-3">
+                    <textarea class="form-control" id="description" rows="3" placeholder="For example: A popular heavy metal song about war, sung by a deep-voiced male singer, slowly and melodiously. The lyrics depict the sorrow of people after the war."></textarea>
+                </div>
+                <div class="d-grid gap-2">
+                    <button class="btn btn-primary" id="generateButton" type="button">
+                        <b>Generate</b> <i class="fas fa-rocket"></i>
+                    </button>
+                </div>
+                <div id="generatedId" class="text-center mt-3" style="color: #D63384;"></div>
+            </div>
+        </div>
+        <div id="loader" class="text-center">
+            <div class="spinner-grow text-warning" style="width: 8rem; height: 8rem;" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <br><br>
+            <h6>Generating your Music....................</h6>
+        </div>
+        <div class="audio-player" id="audioPlayer">
+            <h4 class="text-center mb-3">AI Generated Music Below</h4>
+            <div class="row">
+                <div class="col-sm-12">
+                    <div id="waveform"></div>
+                </div>
+                <div class="col-sm-12 pt-3" id="downloadLinksContainer">
+                    <!-- This will dynamically hold the download buttons -->
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="https://unpkg.com/wavesurfer.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        var wavesurfer = WaveSurfer.create({
+            container: '#waveform',
+            waveColor: 'violet',
+            progressColor: 'purple',
+            cursorColor: 'navy'
+        });
+
+        document.getElementById('generateButton').addEventListener('click', async function() {
+            const prompt = document.getElementById('description').value.trim(); 
+            const loader = document.getElementById('loader');
+            const generatedId = document.getElementById('generatedId');
+            const downloadLinksContainer = document.getElementById('downloadLinksContainer');
+
+            // Clear previous ID display and download links
+            generatedId.textContent = "";
+            downloadLinksContainer.innerHTML = "";
+
+            if (!prompt) {
+                Swal.fire({
+                    text: "Please enter a description for the music generation.",
+                    icon: "error"
+                });
+                return;
+            }
+
+            const requestBody = {
+                prompt: prompt,
+                make_instrumental: false,
+                wait_audio: false
+            };
+
+            try {
+                loader.style.display = "block";
+                const response = await fetch('https://suno-api2-blue.vercel.app/api/generate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(requestBody),
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+
+                    result.forEach(item => {
+                       const id = item.id;
+                    //    const audioUrl = `https://cdn1.suno.ai/${id}.mp3`;
+                       const audioUrl = `https://audiopipe.suno.ai/?item_id=${id}`;
+                   
+                       // Update the Wavesurfer player with the new audio URL
+                       wavesurfer.load(audioUrl);
+                       document.getElementById('audioPlayer').style.display = 'block';
+                   
+                       // Create a download button for each audio URL
+                       const downloadLink = document.createElement('a');
+                       downloadLink.href = audioUrl;
+                       downloadLink.className = "btn btn-primary mt-2";
+                       downloadLink.textContent = `Download Audio ${id}`;
+                       downloadLink.setAttribute('target', '_blank'); // Opens in a new tab
+                   
+                       // Append the download button to the container
+                       downloadLinksContainer.appendChild(downloadLink);
+                   
+                       // Add an MP3 player below the download button using the <audio> tag
+                       const mp3Player = document.createElement('audio');
+                       mp3Player.controls = true;
+                       mp3Player.src = `https://audiopipe.suno.ai/?item_id=${id}`;
+                       mp3Player.className = "mt-2"; // Add some margin-top
+                   
+                       // Append the MP3 player below the download button
+                       downloadLinksContainer.appendChild(mp3Player);
+                   
+                       // Display the ID below the Generate button
+                       generatedId.textContent += `"id": "${id}"\n`;
+                   });
+                   
+
+                } else {
+                    console.error('Server returned an error response');
+                    Swal.fire({
+                        text: "There was an issue with generating the music. Please try again.",
+                        icon: "error"
+                    });
+                }
+
+            } catch (error) {
+                console.error('Failed to fetch:', error);
+                Swal.fire({
+                    text: "Failed to connect to the server. Please check your internet connection and try again.",
+                    icon: "error"
+                });
+            }
+
+            loader.style.display = 'none';
+        });
+
+        // Play the audio when it's ready
+        wavesurfer.on('ready', function() {
+            wavesurfer.play();
+        });
+    </script>
+</body>
+</html>
